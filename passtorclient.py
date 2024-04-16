@@ -59,11 +59,7 @@ def main():
     passwordHasher = SHA256.new()
     usernameHasher.update(bytes(input("Username: "), "UTF-8"))
     username = usernameHasher.hexdigest()
-    passwordhasher.update(bytes(getpass.getpass("Password: "), "UTF-8"))
-    password = passwordHasher.hexdigest()
-    if sys.argv[0] == "-r":
-        register(onionAddress, username, password)
-    else:
-        authenticate(onionAddress, username, password)
+    password = getpass.getpass("Password: ")
+    authenticate(onionAddress, username, password)
 
 main()

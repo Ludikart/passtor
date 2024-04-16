@@ -18,15 +18,7 @@ def listusers():
     res = cur.execute("SELECT * FROM user")
     click.echo(res.fetchall())
 
-
-def addListing(listingType, userName, passWord):
-    # Save to database
-    pass
-
 def changePassword(listingType, userName, newPassword):
-    pass
-
-def removeListing(listingType):
     pass
 
 @cli.command()
@@ -41,9 +33,6 @@ def removeuser(username):
 
     cur.execute("DELETE FROM user WHERE username = ?", (userHash,))
     db.commit()
-
-def getRecords(userID):
-    pass
 
 @cli.command()
 def hello():
