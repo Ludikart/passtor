@@ -10,6 +10,15 @@ INIT_SCRIPT = "schema.sql"
 def cli():
     pass
 
+@cli.command()
+def listusers():
+    db = sqlite3.connect(DATABASE_FILE, detect_types=sqlite3.PARSE_DECLTYPES)
+    cur = db.cursor()
+
+    res = cur.execute("SELECT * FROM user")
+    click.echo(res.fetchall())
+
+
 def addListing(listingType, userName, passWord):
     # Save to database
     pass
@@ -20,8 +29,18 @@ def changePassword(listingType, userName, newPassword):
 def removeListing(listingType):
     pass
 
-def removeUser(listingType, userName):
-    pass
+@cli.command()
+@click.option('--username', prompt="Username")
+def removeuser(username):
+    db = sqlite3.connect(DATABASE_FILE, detect_types=sqlite3.PARSE_DECLTYPES)
+    cur = db.cursor()
+
+    usernameHasher = SHA256.new()
+    usernameHasher.update(bytes(username, 'UTF-8'))
+    userHash = usernameHasher.hexdigest() 
+
+    cur.execute("DELETE FROM user WHERE username = ?", (userHash,))
+    db.commit()
 
 def getRecords(userID):
     pass
@@ -29,7 +48,6 @@ def getRecords(userID):
 @cli.command()
 def hello():
     click.echo("Hello")
-    print("hello")
 
 @cli.command()
 @click.option('--user', prompt="Username")
@@ -39,13 +57,13 @@ def newuser(user, password):
     cur = db.cursor()
 
     usernameHasher = SHA256.new()
-    userHash = usernameHasher.update(bytes(user, 'UTF-8'))
+    usernameHasher.update(bytes(user, 'UTF-8'))
+    userHash = usernameHasher.hexdigest() 
 
     passwordHasher = argon2.PasswordHasher()
     passwordHash = passwordHasher.hash(password)
 
-    tup = (userHash, passwordHash)
-    cur.execute("INSERT INTO user (username, pass) VALUES (?,?)", tup)
+    cur.execute("INSERT INTO user (username, pass) VALUES (?,?)",(userHash, passwordHash))
     db.commit()
 
 @cli.command()
