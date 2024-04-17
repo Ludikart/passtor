@@ -2,6 +2,7 @@ import sys
 import getpass
 import requests
 import json
+import click
 from Crypto.Cipher import AES
 from Crypto.Hash import SHA256
 #from Crypto.Protocol.KDF import PBKDF2
@@ -16,9 +17,9 @@ def authenticate(address, username, masterPass):
     #print(loginData)
     resp = session.post(address + "/login", data=loginData, headers={'Content-Type': 'application/json'})
 
-    print(resp)
+    print(resp.status_code)
 
-    return session
+    return resp.status_code == 200
 
 def register(onionAddress, userName, masterPass):
 
@@ -38,14 +39,7 @@ def newListing(listingType, userName, password):
 def changePassword(listingType, userName, newPassword):
     pass
 
-def main():
-    # connect
-    # authenticate
-    # what to do?
-    # do the things
-    # elif etc.
-
-
+def get_config():
     try:
         with open(configFile, "r") as config:
             onionAddress = config.readline()
@@ -53,13 +47,27 @@ def main():
     except Exception:
         print("Config file couldn't be read.")
         exit()
+    return (onionAddress, privateKey)
 
-
+def login():
+    onionAddress, privateKey = get_config()
     usernameHasher = SHA256.new()
     passwordHasher = SHA256.new()
     usernameHasher.update(bytes(input("Username: "), "UTF-8"))
     username = usernameHasher.hexdigest()
     password = getpass.getpass("Password: ")
-    authenticate(onionAddress, username, password)
+    print(authenticate(onionAddress, username, password))
 
-main()
+
+
+    # connect
+    # authenticate
+    # what to do?
+    # do the things
+    # elif etc.
+    
+
+if (login()):
+    while True:
+        # cli here
+        pass
