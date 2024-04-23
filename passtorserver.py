@@ -22,11 +22,16 @@ def newRecord(recordType, userName, passWord):
     # Save to database
 
     if 'username' in session and request.is_json:
-        db = get_db()
+        user_id = request.cookies.get('username')
         requestData = request.get_json()
         usernameHash = requestData.get('username')
+        recordType = requestData.get('type')
+        userName = requestData.get('uname')
+        passWord = requestData.get('pass')
+        db = get_db()
         cursor = db.cursor()
-        result = cursor.execute("SELECT pass FROM user where username = (?)", (usernameHash,))
+        result = cursor.execute("INSERT INTO record (user_id, recordtype, username, pass) VALUES = (?)", (user_id, recordType, userName, passWord))
+        db.commit()
 
 def removeListing(listingType):
     pass

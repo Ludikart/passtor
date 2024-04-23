@@ -23,18 +23,18 @@ def authenticate(address, username, masterPass):
 
     return resp.status_code == 200
 
-def newRecord():
-    # Authenticate with server
-    # Hash values
-    # Encrypt password
-    # Send to server
+def newRecord(onionAddress, privateKey):
     session = requests.Session()
-    onionAddress, privateKey = get_config()
-    print("newrecordsessionscookie")
-    print(session_cookie)
-    resp = session.get(onionAddress, cookies={'username': username_hash, 'session': session_cookie})
-    print(resp.status_code)
-    exit()
+    recordType = input("What is this record for?: ")
+    username = input("Username: ")
+    password = getpass.getpass("Password: ")
+    recordData = {'type': recordType, 'uname': username, 'pass': password}
+    sure = input("Are you sure? (Y/n): ")
+    if (sure == "Y" or sure == "" or sure == "y"):
+        resp = session.post(onionAddress + "/newrecord", data=recordData, cookies={'username': username_hash, 'session': session_cookie})
+        print(resp.status_code)
+    else:
+        return
 
 def listRecords():
     pass
@@ -58,9 +58,8 @@ def get_config():
         exit()
     return (onionAddress, privateKey)
 
-def login():
+def login(onionAddress):
     global username_hash
-    onionAddress, privateKey = get_config()
     usernameHasher = SHA256.new()
     passwordHasher = SHA256.new()
     usernameHasher.update(bytes(input("Username: "), "UTF-8"))
@@ -68,26 +67,35 @@ def login():
     password = getpass.getpass("Password: ")
     return authenticate(onionAddress, username_hash, password)
 
-def commands():
+def logout(onionAddress):
+    exit()
+
+def commands(): # List available commands for the user
     print("l = List records")
     print("g = Get record")
     print("n = New record")
     print("d = Delete record")
+    print("c = Change record")
 
-    # connect
-    # authenticate
-    # what to do?
-    # do the things
-    # elif etc.
-    
+def main():
+    onionAddress, privateKey = get_config()
+    if (login(onionAddress)):
+        # Basic command line interface
+        while True:
+            command = input("Enter command: ")
+            if (command == "h" or command == "help"):
+                commands()
+            elif (command == "g"):
+                getRecord(onionAddress, privateKey)
+            elif (command == "l"):
+                listRecords(onionAddress, privateKey)
+            elif (command == "n"):
+                newRecord(onionAddress, privateKey)
+            elif (command == "d"):
+                removeRecord(onionAddress, privateKey)
+            elif (command == "c"):
+                changeRecord(onionAddress, privateKey)
+            elif (command == "q"):
+                logout()
 
-if (login()):
-    while True:
-        command = input("Enter command: ")
-        # cli here
-        if (command == "h" or command == "help"):
-            commands()
-        elif (command == "l"):
-            listRecords()
-        newRecord()
-
+main()
