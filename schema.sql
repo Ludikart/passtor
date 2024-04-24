@@ -10,7 +10,7 @@ CREATE TABLE user (
 CREATE TABLE record (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   user_id INTEGER NOT NULL,
-  palvelu TEXT NOT NULL,
+  recordtype TEXT NOT NULL,
   username TEXT NOT NULL,
   pass TEXT NOT NULL,
   FOREIGN KEY (user_id) REFERENCES user (id)

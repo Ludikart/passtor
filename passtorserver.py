@@ -18,20 +18,22 @@ app.config['DATABASE'] = "passtorDatabase.db"
 app.secret_key = b'_5#y2L"F4Q8z\n\xec]/'
 
 @app.post("/newrecord")
-def newRecord(recordType, userName, passWord):
-    # Save to database
+def newRecord():
+    usernameHash = request.cookies.get('username')
 
     if 'username' in session and request.is_json:
-        user_id = request.cookies.get('username')
         requestData = request.get_json()
-        usernameHash = requestData.get('username')
         recordType = requestData.get('type')
         userName = requestData.get('uname')
         passWord = requestData.get('pass')
         db = get_db()
         cursor = db.cursor()
-        result = cursor.execute("INSERT INTO record (user_id, recordtype, username, pass) VALUES = (?)", (user_id, recordType, userName, passWord))
+        result = cursor.execute("SELECT id FROM user where username = (?)", (usernameHash,))
+        user_id = result.fetchone()[0]
+        result = cursor.execute("INSERT INTO record (user_id, recordtype, username, pass) VALUES (?, ?, ?, ?)", (user_id, recordType, userName, passWord))
         db.commit()
+        return "Ok", 200
+    return "Unauthorized", 401
 
 def removeListing(listingType):
     pass
@@ -48,23 +50,22 @@ def get_db():
 
     return g.db
 
-@app.route("/")
-def hello_world():
-    print(request.cookies.get('username'))
-    print(request.cookies.get('session'))
-    session[request.cookies.get('username')] = request.cookies.get('session')
-    #session[request.cookies.get('username')] = request.cookies.get('session')
-    if request.cookies.get('username') in session:
+@app.get("/")
+def set_session():
+    usernameHash = request.cookies.get('username')
+    print(session['username'])
+    if 'username' in session:
         print(session)
-        #print(request.cookies)
-        return "<p>Hello, World!</p>"
+        return "Ok", 200
     return "Unauthorized", 401
 
+"""
 @app.route("/login")
 def login_get():
     if 'username' in session:
         print(session['username'])
         return request.cookies
+"""
 
 @app.post("/login")
 def login_post():
@@ -80,5 +81,20 @@ def login_post():
 
         if passwordHasher.verify(passwordHash, password):
             print("success")
-        session[usernameHash] = requestData.get('username')
+
+        session['username'] = usernameHash
+        return "Ok", 200 
     return "<p>ok</p>"
+
+@app.post("/test")
+def test():
+    usernameHash = request.cookies.get('username')
+
+    print(usernameHash)
+    print(session[usernameHash])
+    print(request.cookies.get('session'))
+    if session[usernameHash] == request.cookies.get('session') and request.is_json:
+        print("authenticated")
+        return 200
+    return 401
+ 

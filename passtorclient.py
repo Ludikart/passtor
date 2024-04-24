@@ -18,7 +18,8 @@ def authenticate(address, username, masterPass):
     resp = session.post(address + "/login", data=loginData, headers={'Content-Type': 'application/json'})
     
     global session_cookie
-    session_cookie = resp.cookies["session"]
+    print(resp.cookies['session'])
+    session_cookie = resp.cookies['session']
 #    print(resp.status_code)
 
     return resp.status_code == 200
@@ -29,9 +30,10 @@ def newRecord(onionAddress, privateKey):
     username = input("Username: ")
     password = getpass.getpass("Password: ")
     recordData = {'type': recordType, 'uname': username, 'pass': password}
+    recordData = json.dumps(recordData)
     sure = input("Are you sure? (Y/n): ")
     if (sure == "Y" or sure == "" or sure == "y"):
-        resp = session.post(onionAddress + "/newrecord", data=recordData, cookies={'username': username_hash, 'session': session_cookie})
+        resp = session.post(onionAddress + "/newrecord", data=recordData, cookies={'username': username_hash, 'session': session_cookie}, headers={'Content-Type': 'application/json'})
         print(resp.status_code)
     else:
         return
@@ -77,6 +79,17 @@ def commands(): # List available commands for the user
     print("d = Delete record")
     print("c = Change record")
 
+def test(onionAddress):
+    session = requests.Session()
+    resp = session.post(onionAddress + "/test", cookies={'username': username_hash, 'session': session_cookie})
+    print(resp.status_code)
+
+def send_cookie(onionAddress):
+    session = requests.Session()
+    resp = session.get(onionAddress, cookies={'username': username_hash, 'session': session_cookie})
+    print(resp.status_code)
+
+
 def main():
     onionAddress, privateKey = get_config()
     if (login(onionAddress)):
@@ -96,6 +109,8 @@ def main():
             elif (command == "c"):
                 changeRecord(onionAddress, privateKey)
             elif (command == "q"):
-                logout()
+                logout(onionAddress)
+            elif (command == "t"):
+                test(onionAddress)
 
 main()
