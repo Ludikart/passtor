@@ -1,4 +1,5 @@
 import os
+import datetime
 import shutil
 import argon2
 import json
@@ -9,7 +10,7 @@ from Crypto.Hash import SHA256
 
 #from stem.control import Controller
 from flask import Flask
-from flask import current_app, session, request, redirect, url_for, g
+from flask import current_app, session, request, redirect, url_for, g, send_file
 
 app = Flask(__name__)
 
@@ -51,12 +52,24 @@ def get_db():
     return g.db
 
 @app.get("/")
-def set_session():
+def get_database():
     usernameHash = request.cookies.get('username')
     print(session['username'])
     if 'username' in session:
-        print(session)
-        return "Ok", 200
+        last_modified_time = os.path.getmtime(usernameHash)
+        last_modified_datetime = datetime.datetime.utcfromtimestamp(last_modified_time)
+        response = send_file(usernameHash)
+        response.last_modified = last_modified_datetime
+        return response
+    return "Unauthorized", 401
+
+@app.post("/")
+def update_database():
+    usernameHash = request.cookies.get('username')
+    print(session['username'])
+    if 'username' in session:
+        with open(usernameHash) as db_file:
+            db_file.write(request.get_data)
     return "Unauthorized", 401
 
 """
