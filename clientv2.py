@@ -3,28 +3,61 @@ import getpass
 import requests
 import json
 import argon2
+from os.path import exists
 from Crypto.Cipher import AES
 from Crypto.Protocol.KDF import PBKDF2
 from Crypto.Hash import SHA512, SHA256
+from Crypto.Random import get_random_bytes
 
 configFile = "passtorconfig"
 session_cookie = ""
 username_hash = ""
 
 global database
-database = {"test": ("test1", "test2")}
+database = {}
 
+# Register new user
+# Creates a key file and password hash file
+# 
+# TODO registering with server. Should it be possible to make local only users?
 def register(address, usernamehash, password):
-    if os.file.exists(usernamehash + "user"):
+    if exists(usernamehash + ".user"):
         print("User already exists")
-        return
+        exit()
 
+    #try:
     hasher = argon2.PasswordHasher()
-    with open(usernamehash + "user", "w") as hashfile:
-        hashfile.write(hasher.hash(password))
+    with open(usernamehash + ".user", 'wb') as hashfile:
+        hashfile.write(bytes(hasher.hash(password) + '\n', 'utf-8'))
+        hashfile.write(get_random_bytes(32))
+        
+    # Create the database file
+    with open(usernamehash, 'wb') as dbfile:
+        pass
+
+    #except:
+     #   print("Password hashing failed")
+      #  exit()
+
+    # Ask for server password and register with server
     return
 
-def authenticate(address, username, masterPass):
+def login(address, usernamehash, password):
+    with open(usernamehash + ".user", 'rb') as hashfile:
+        phash = hashfile.readline().decode('utf-8')
+        privatekey = hashfile.readline()
+    
+    encryptionkey = derivekey(password, privatekey)
+    phash = phash[:-1] # remove endline character
+    passwordHasher = argon2.PasswordHasher()
+    result = passwordHasher.verify(phash, password)
+    if result:
+        return server_login(address, usernamehash, password), encryptionkey
+    else:
+        print("Authentication failed")
+        exit()
+
+def server_login(address, username, masterPass):
     session = requests.Session()
     loginData = {'username': username, 'password': masterPass}
     loginData = json.dumps(loginData)
@@ -64,17 +97,19 @@ def get_db(onionAddress, loggedin, filename, encryptionkey):
     # Read database file
     # Decrypt
 
-    global database
-    with open(filename, "r") as file:
+    with open(filename, "rb") as file:
         filedata = file.read()
         # decrypt here
-        database = json.loads(filedata)
-        return
 
-    return
+        # If file is empty, return empty dict
+        if (filedata == b''):
+            database = {}
+        else:
+            database = json.loads(filedata)
 
-# Add encryption key as variable
-def save_database(onionAddress, dbfileName, encryptionkey, loggedin):
+    return database
+
+def save_database(onionAddress, loggedin, dbfileName, encryptionkey):
     # If logged in, send updated database file
     # else show error message
     # 
@@ -92,39 +127,40 @@ def save_database(onionAddress, dbfileName, encryptionkey, loggedin):
 
     return
 
-def get_config(usernamehash):
+def get_config(fileName):
     try:
-        with open(usernamehash, "r") as config:
-            onionAddress = config.readline()
-            privateKey = config.readline()
+        with open(fileName, "r") as config:
+            line = config.readline()
     except Exception:
         print("Config file couldn't be read.")
         exit()
-    return (onionAddress, privateKey)
+    return line
 
 def derivekey(password, privatekey):
-    key = PBKDF2(bytes(password, 'utf-8'), bytes(privatekey, 'utf-8'), 32, count=1000000, hmac_hash_module=SHA512)
+    key = PBKDF2(bytes(password, 'utf-8'), privatekey, 32, count=1000000, hmac_hash_module=SHA512)
     return key
 
 # Try database update
 # Decrypt database
 # cli
 def main():
-    filename = "encrypteddb"
-
     logged_in = False
     usernameHasher = SHA256.new()
     usernameHasher.update(bytes(input("Username: "), "UTF-8"))
     username_hash = usernameHasher.hexdigest()
     password = getpass.getpass("Password: ")
-    onionAddress, privateKey = get_config(username_hash)
+    onionAddress = get_config(configFile)
 
-    logged_in = authenticate(onionAddress, username_hash, password)
+    # Option to register new user
+    if (len(sys.argv) > 1 and sys.argv[1] == '-r'):
+        register(onionAddress, username_hash, password)
     
-    encryption_key = derivekey(password, privateKey)
-    database = get_db(onionAddress, logged_in, filename, encryption_key)
+    logged_in, encryption_key = login(onionAddress, username_hash, password)
 
-        # Basic command line interface
+    global database
+    database = get_db(onionAddress, logged_in, username_hash, encryption_key)
+
+    # Basic command line interface
     while True:
         command = input("Enter command: ")
         if (command == "h" or command == "help"):
@@ -142,6 +178,6 @@ def main():
         elif (command == "t"):
             test(onionAddress)
         elif (command == "s"):
-            save_database(onionAddress, filename, encryption_key)
+            save_database(onionAddress, logged_in, username_hash, encryption_key)
 
 main()
