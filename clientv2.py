@@ -2,6 +2,7 @@ import sys
 import getpass
 import requests
 import json
+import argon2
 from Crypto.Cipher import AES
 from Crypto.Protocol.KDF import PBKDF2
 from Crypto.Hash import SHA512, SHA256
@@ -13,8 +14,15 @@ username_hash = ""
 global database
 database = {"test": ("test1", "test2")}
 
-def register(address, username, password):
-    pass
+def register(address, usernamehash, password):
+    if os.file.exists(usernamehash + "user"):
+        print("User already exists")
+        return
+
+    hasher = argon2.PasswordHasher()
+    with open(usernamehash + "user", "w") as hashfile:
+        hashfile.write(hasher.hash(password))
+    return
 
 def authenticate(address, username, masterPass):
     session = requests.Session()
