@@ -61,11 +61,11 @@ def login_post():
         passwordHash = result.fetchone()[0]
 
         if passwordHasher.verify(passwordHash, password):
-            print("success")
-
-        session['username'] = usernameHash
-        return "Ok", 200 
-    return "<p>ok</p>"
+            session['username'] = usernameHash
+            return "Ok", 200 
+        else:
+            return "Unauthorized", 401
+    return "Bad request", 400
 
 # TODO Add server password so only known users can register user accounts
 # TODO Make sure you can't create a new user with the same name and access the old database
