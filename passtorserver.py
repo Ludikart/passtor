@@ -18,26 +18,6 @@ app.config['DATABASE'] = "passtorDatabase.db"
 
 app.secret_key = b'_5#y2L"F4Q8z\n\xec]/'
 
-"""
-@app.post("/newrecord")
-def newRecord():
-    usernameHash = request.cookies.get('username')
-
-    if 'username' in session and request.is_json:
-        requestData = request.get_json()
-        recordType = requestData.get('type')
-        userName = requestData.get('uname')
-        passWord = requestData.get('pass')
-        db = get_db()
-        cursor = db.cursor()
-        result = cursor.execute("SELECT id FROM user where username = (?)", (usernameHash,))
-        user_id = result.fetchone()[0]
-        result = cursor.execute("INSERT INTO record (user_id, recordtype, username, pass) VALUES (?, ?, ?, ?)", (user_id, recordType, userName, passWord))
-        db.commit()
-        return "Ok", 200
-    return "Unauthorized", 401
-"""
-
 def get_db():
     if 'db' not in g:
         g.db = sqlite3.connect(
@@ -50,7 +30,6 @@ def get_db():
 @app.get("/")
 def get_database():
     usernameHash = request.cookies.get('username')
-    print(session['username'])
     if 'username' in session:
         last_modified_time = os.path.getmtime(usernameHash)
         last_modified_datetime = datetime.datetime.utcfromtimestamp(last_modified_time)
@@ -62,20 +41,11 @@ def get_database():
 @app.post("/")
 def update_database():
     usernameHash = request.cookies.get('username')
-    print(session['username'])
     if 'username' in session:
         dbfile = request.files['db']
         dbfile.save('serverdatafile')
         return "Ok", 200
     return "Unauthorized", 401
-
-"""
-@app.route("/login")
-def login_get():
-    if 'username' in session:
-        print(session['username'])
-        return request.cookies
-"""
 
 @app.post("/login")
 def login_post():

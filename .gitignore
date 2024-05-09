@@ -2,3 +2,5 @@ __pycache__/
 passtorDatabase.db
 passtorconfig
 COMMANDS
+*.user
+TODO
