@@ -23,12 +23,24 @@ database = {}
 def register(address, usernamehash, password):
     if exists(usernamehash + ".user"):
         print("User already exists")
-        exit()
+        return False
+
+    session = requests.Session()
+    userdata = {'username': usernamehash, 'password': password}
+    userdata = json.dumps(userdata)
+    try:
+        resp = session.post(address + "/register", data=userdata, headers={'Content-Type': 'application/json'})
+        if resp.status_code == 409: # User already exists
+            return False
+    except:
+        print("Couldn't connect to server")
+    
 
     #try:
     hasher = argon2.PasswordHasher()
+    passwordhash = hasher.hash(password)
     with open(usernamehash + ".user", 'wb') as hashfile:
-        hashfile.write(bytes(hasher.hash(password) + '\n', 'utf-8'))
+#        hashfile.write(bytes(passwordhash + '\n', 'utf-8'))
         hashfile.write(get_random_bytes(32))
         
     # Create the database file
@@ -38,40 +50,39 @@ def register(address, usernamehash, password):
     #except:
      #   print("Password hashing failed")
       #  exit()
+    
 
     # Ask for server password and register with server
-    return
+    return True
+
+#def login(address, usernamehash, password):
+#        phash = hashfile.readline().decode('utf-8')
+    
+#    phash = phash[:-1] # remove endline character
+#    passwordHasher = argon2.PasswordHasher()
+#    result = passwordHasher.verify(phash, password)
+#    return server_login(address, usernamehash, password), encryptionkey
 
 def login(address, usernamehash, password):
-    with open(usernamehash + ".user", 'rb') as hashfile:
-        phash = hashfile.readline().decode('utf-8')
-        privatekey = hashfile.readline()
-    
-    encryptionkey = derivekey(password, privatekey)
-    phash = phash[:-1] # remove endline character
-    passwordHasher = argon2.PasswordHasher()
-    result = passwordHasher.verify(phash, password)
-    if result:
-        return server_login(address, usernamehash, password), encryptionkey
-    else:
-        print("Authentication failed")
-        exit()
+    with open(usernamehash + ".user", 'rb') as keyfile:
+        privatekey = keyfile.read()
 
-def server_login(address, username, masterPass):
+    encryptionkey = derivekey(password, privatekey)
+
     session = requests.Session()
-    loginData = {'username': username, 'password': masterPass}
+    loginData = {'username': usernamehash, 'password': password}
     loginData = json.dumps(loginData)
     try:
         resp = session.post(address + "/login", data=loginData, headers={'Content-Type': 'application/json'})
     except:
         print("Couldn't connect to server")
-        return False
+        return False, encryptionkey
     
     global session_cookie
     print(resp.cookies['session'])
     session_cookie = resp.cookies['session']
 
-    return resp.status_code == 200
+    return resp.status_code == 200, encryptionkey
 
 def listRecords():
     global database
@@ -93,10 +104,20 @@ def logout(onionAddress):
     exit()
 
 def get_db(onionAddress, loggedin, filename, encryptionkey):
-    # If logged in, check update from server
-    # Read database file
-    # Decrypt
 
+    # If logged in, check update from server
+    if (loggedin):
+        global session_cookie
+        session = requests.Session()
+        response = session.get(onionAddress, cookies={'username': filename, 'session': session_cookie})
+        if response.status_code == 200:
+            with open(filename, "wb") as dbfile:
+                dbfile.write(response.content)
+            # decrypt here
+            database = json.loads(response.content)
+            return database
+                
+    # Read database file if there was no update from server
     with open(filename, "rb") as file:
         filedata = file.read()
         # decrypt here
@@ -127,6 +148,7 @@ def save_database(onionAddress, loggedin, dbfileName, encryptionkey):
 
     return
 
+# Basically just for getting the address
 def get_config(fileName):
     try:
         with open(fileName, "r") as config:
@@ -153,7 +175,9 @@ def main():
 
     # Option to register new user
     if (len(sys.argv) > 1 and sys.argv[1] == '-r'):
-        register(onionAddress, username_hash, password)
+        if not register(onionAddress, username_hash, password):
+            exit()
+
     
     logged_in, encryption_key = login(onionAddress, username_hash, password)
 
