@@ -16,10 +16,10 @@ username_hash = ""
 global database
 database = {}
 
-# Register new user
-# Creates a key file and password hash file
+# Creates a key file and database file
+# Register new user on the server
 # 
-# TODO registering with server. Should it be possible to make local only users?
+# TODO Should it be possible to make local only users?
 def register(address, usernamehash, password):
     if exists(usernamehash + ".user"):
         print("User already exists")
@@ -36,33 +36,20 @@ def register(address, usernamehash, password):
         print("Couldn't connect to server")
     
 
-    #try:
-    hasher = argon2.PasswordHasher()
-    passwordhash = hasher.hash(password)
-    with open(usernamehash + ".user", 'wb') as hashfile:
-#        hashfile.write(bytes(passwordhash + '\n', 'utf-8'))
-        hashfile.write(get_random_bytes(32))
+
+    # Create random 256bit key and write it to file
+    privatekey = get_random_bytes(32)
+    with open(usernamehash + ".user", 'wb') as keyfile:
+        keyfile.write(privatekey)
         
     # Create the database file
     with open(usernamehash, 'wb') as dbfile:
         pass
 
-    #except:
-     #   print("Password hashing failed")
-      #  exit()
-    
-
-    # Ask for server password and register with server
+    # TODO Ask for server password and authenticate with server
     return True
 
-#def login(address, usernamehash, password):
-#        phash = hashfile.readline().decode('utf-8')
-    
-#    phash = phash[:-1] # remove endline character
-#    passwordHasher = argon2.PasswordHasher()
-#    result = passwordHasher.verify(phash, password)
-#    return server_login(address, usernamehash, password), encryptionkey
-
+# Logs the user onto the server
 def login(address, usernamehash, password):
     with open(usernamehash + ".user", 'rb') as keyfile:
         privatekey = keyfile.read()
@@ -79,7 +66,6 @@ def login(address, usernamehash, password):
         return False, encryptionkey
     
     global session_cookie
-    print(resp.cookies['session'])
     session_cookie = resp.cookies['session']
 
     return resp.status_code == 200, encryptionkey
@@ -141,8 +127,8 @@ def save_database(onionAddress, loggedin, dbfileName, encryptionkey):
         file.write(bytes(datastream, 'utf-8'))
     
     if (loggedin):
-        with open(dbfilename, 'rb') as file:
-            response = requests.post(onionAddress, files={'db': file})
+        with open(dbfileName, 'rb') as file:
+            response = requests.post(onionAddress, files={'db': file}, cookies={'username': dbfileName, 'session': session_cookie})
     else:
         print("Database couldn't be sent to server, please try to log in again.")
 
@@ -173,15 +159,17 @@ def main():
     password = getpass.getpass("Password: ")
     onionAddress = get_config(configFile)
 
+    global database
     # Option to register new user
     if (len(sys.argv) > 1 and sys.argv[1] == '-r'):
-        if not register(onionAddress, username_hash, password):
+        if register(onionAddress, username_hash, password):
+            database = {}
+            logged_in, encryption_key = login(onionAddress, username_hash, password)
+            save_database(onionAddress, logged_in, username_hash, encryption_key)
             exit()
-
     
     logged_in, encryption_key = login(onionAddress, username_hash, password)
 
-    global database
     database = get_db(onionAddress, logged_in, username_hash, encryption_key)
 
     # Basic command line interface
