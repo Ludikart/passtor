@@ -18,6 +18,7 @@ app.config['DATABASE'] = "passtorDatabase.db"
 
 app.secret_key = b'_5#y2L"F4Q8z\n\xec]/'
 
+"""
 @app.post("/newrecord")
 def newRecord():
     usernameHash = request.cookies.get('username')
@@ -35,12 +36,7 @@ def newRecord():
         db.commit()
         return "Ok", 200
     return "Unauthorized", 401
-
-def removeListing(listingType):
-    pass
-
-def getRecords(userID):
-    pass
+"""
 
 def get_db():
     if 'db' not in g:
@@ -91,6 +87,7 @@ def login_post():
         password = requestData.get('password')
         cursor = db.cursor()
         result = cursor.execute("SELECT pass FROM user where username = (?)", (usernameHash,))
+        
         passwordHash = result.fetchone()[0]
 
         if passwordHasher.verify(passwordHash, password):
@@ -100,15 +97,23 @@ def login_post():
         return "Ok", 200 
     return "<p>ok</p>"
 
-@app.post("/test")
-def test():
-    usernameHash = request.cookies.get('username')
-
-    print(usernameHash)
-    print(session[usernameHash])
-    print(request.cookies.get('session'))
-    if session[usernameHash] == request.cookies.get('session') and request.is_json:
-        print("authenticated")
-        return 200
-    return 401
+# TODO Add server password so only known users can register user accounts
+# TODO Make sure you can't create a new user with the same name and access the old database
+@app.post("/register")
+def register():
+    if request.is_json:
+        db = get_db()
+        passwordHasher = argon2.PasswordHasher()
+        requestData = request.get_json()
+        usernameHash = requestData.get('username')
+        password = requestData.get('password')
+        passwordHash = passwordHasher.hash(password)
+        cursor = db.cursor()
+        try:
+            result = cursor.execute("INSERT INTO user (username, pass) VALUES (?,?)",(usernameHash, passwordHash))
+            db.commit()
+        except sqlite3.IntegrityError:
+            return "Conflict", 409
+        return "Ok", 200
+    return "Bad request", 400
  
