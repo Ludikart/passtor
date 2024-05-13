@@ -87,3 +87,7 @@ def register():
         return "Ok", 200
     return "Bad request", 400
  
+@app.get("/logout")
+def logout():
+    session.pop('username')
+    return "Ok", 200

@@ -74,21 +74,47 @@ def login(address, usernamehash, password):
 
 def listRecords():
     global database
-    print(database.keys())
+    for key in database:
+        print(key)
+    return
+
+def getRecord():
+    recordtype = input("Search: ")
+    global database
+    if recordtype in database:
+        print("Username: " + database[recordtype][0])
+        print("Password: " + database[recordtype][1])
+    else:
+        print("Record not found")
+    return
 
 def newRecord():
     global database
-    key = input("Type of record: ")
+    key = input("Title: ")
     if(key in database):
-        print("Record already exists, please use c-option or use different record type")
-        return
+        print("Record already exists, please use the change command or a different title")
+        return False
     user = input("Username: ")
     password = getpass.getpass("Password: ")
     if(input("Are you sure you want to add this?[y/n]") == 'y' and key not in database):
         database[key] = (user, password)
-    return
+        return True
+    else:
+        return False
+
+def removeRecord():
+    recordtitle = input("Search: ")
+    global database
+    if recordtitle in database:
+        if (input("Are you sure you want to delete" + recordtitle + "? [y/n]: ") == "y"):
+            del database[recordtitle]
+            return True
+    return False
 
 def logout(onionAddress):
+    session = requests.Session()
+    global session_cookie
+    response = session.get(onionAddress + "/logout", cookies={'session': session_cookie})
     exit()
 
 def get_db(onionAddress, loggedin, filename, encryptionkey):
@@ -101,19 +127,22 @@ def get_db(onionAddress, loggedin, filename, encryptionkey):
         if response.status_code == 200:
             with open(filename, "wb") as dbfile:
                 dbfile.write(response.content)
-                # decrypt here
+                # Decryption
                 iv_and_ct = response.content
                 iv = iv_and_ct[:16]
                 ct = iv_and_ct[16:]
                 cipher = AES.new(encryptionkey, AES.MODE_CBC, iv)
                 database = json.loads(unpad(cipher.decrypt(ct), AES.block_size))
-#            database = json.loads(response.content)
             return database
                 
     # Read database file if there was no update from server
     with open(filename, "rb") as file:
-        filedata = file.read()
-        # decrypt here
+        # Decryption
+        iv_and_ct = file.read()
+        iv = iv_and_ct[:16]
+        ct = iv_and_ct[16:]
+        cipher = AES.new(encryptionkey, AES.MODE_CBC, iv)
+        database = json.loads(unpad(cipher.decrypt(ct), AES.block_size))
 
         # If file is empty, return empty dict
         if (filedata == b''):
@@ -189,10 +218,14 @@ def main():
             commands()
         elif (command == "l"):
             listRecords()
+        elif (command == "g"):
+            getRecord()
         elif (command == "n"):
-            newRecord()
+            if newRecord():
+                save_database(onionAddress, logged_in, username_hash, encryption_key)
         elif (command == "d"):
-            removeRecord()
+            if removeRecord():
+                save_database(onionAddress, logged_in, username_hash, encryption_key)
         elif (command == "c"):
             changeRecord()
         elif (command == "q"):
