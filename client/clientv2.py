@@ -5,6 +5,7 @@ import json
 import argon2
 from os.path import exists
 from Crypto.Cipher import AES
+from Crypto.Util.Padding import pad, unpad
 from Crypto.Protocol.KDF import PBKDF2
 from Crypto.Hash import SHA512, SHA256
 from Crypto.Random import get_random_bytes
@@ -27,6 +28,7 @@ def register(address, usernamehash, password):
 
     session = requests.Session()
     userdata = {'username': usernamehash, 'password': password}
+    print(password)
     userdata = json.dumps(userdata)
     try:
         resp = session.post(address + "/register", data=userdata, headers={'Content-Type': 'application/json'})
@@ -99,8 +101,13 @@ def get_db(onionAddress, loggedin, filename, encryptionkey):
         if response.status_code == 200:
             with open(filename, "wb") as dbfile:
                 dbfile.write(response.content)
-            # decrypt here
-            database = json.loads(response.content)
+                # decrypt here
+                iv_and_ct = response.content
+                iv = iv_and_ct[:16]
+                ct = iv_and_ct[16:]
+                cipher = AES.new(encryptionkey, AES.MODE_CBC, iv)
+                database = json.loads(unpad(cipher.decrypt(ct), AES.block_size))
+#            database = json.loads(response.content)
             return database
                 
     # Read database file if there was no update from server
@@ -121,10 +128,13 @@ def save_database(onionAddress, loggedin, dbfileName, encryptionkey):
     # else show error message
     # 
     global database
-    with open(dbfileName, 'wb') as file:
-        datastream = json.dumps(database)
-        # Encryption here
-        file.write(bytes(datastream, 'utf-8'))
+    with open(dbfileName, 'wb') as dbfile:
+        datastream = bytes(json.dumps(database), 'utf-8')
+        # Encryption
+        cipher = AES.new(encryptionkey, AES.MODE_CBC)
+        ct = cipher.encrypt(pad(datastream, AES.block_size))
+        iv = cipher.iv
+        dbfile.write(iv + ct)
     
     if (loggedin):
         with open(dbfileName, 'rb') as file:

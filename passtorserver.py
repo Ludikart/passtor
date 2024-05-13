@@ -43,7 +43,7 @@ def update_database():
     usernameHash = request.cookies.get('username')
     if 'username' in session:
         dbfile = request.files['db']
-        dbfile.save('serverdatafile')
+        dbfile.save(usernameHash)
         return "Ok", 200
     return "Unauthorized", 401
 
