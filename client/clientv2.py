@@ -28,7 +28,6 @@ def register(address, usernamehash, password):
 
     session = requests.Session()
     userdata = {'username': usernamehash, 'password': password}
-    print(password)
     userdata = json.dumps(userdata)
     try:
         resp = session.post(address + "/register", data=userdata, headers={'Content-Type': 'application/json'})
@@ -53,8 +52,12 @@ def register(address, usernamehash, password):
 
 # Logs the user onto the server
 def login(address, usernamehash, password):
-    with open(usernamehash + ".user", 'rb') as keyfile:
-        privatekey = keyfile.read()
+    try:
+        with open(usernamehash + ".user", 'rb') as keyfile:
+            privatekey = keyfile.read()
+    except FileNotFoundError:
+        print("User's keyfile not found")
+        exit()
 
     encryptionkey = derivekey(password, privatekey)
 
@@ -72,12 +75,14 @@ def login(address, usernamehash, password):
 
     return resp.status_code == 200, encryptionkey
 
+# Lists titles of all records in the user's database
 def listRecords():
     global database
     for key in database:
         print(key)
     return
 
+# Fetches a record by title and shows the associated username and password
 def getRecord():
     recordtype = input("Search: ")
     global database
@@ -88,6 +93,7 @@ def getRecord():
         print("Record not found")
     return
 
+# Queries the user for the title, username and password of a record and adds it to the database
 def newRecord():
     global database
     key = input("Title: ")
@@ -102,6 +108,7 @@ def newRecord():
     else:
         return False
 
+# Queries the user for the title of a record to be removed and removes it
 def removeRecord():
     recordtitle = input("Search: ")
     global database
@@ -111,12 +118,14 @@ def removeRecord():
             return True
     return False
 
+# Sends logout reques to server and exits the client
 def logout(onionAddress):
     session = requests.Session()
     global session_cookie
     response = session.get(onionAddress + "/logout", cookies={'session': session_cookie})
     exit()
 
+# Fetches updates from the server, decrypts and returns the database in dict form
 def get_db(onionAddress, loggedin, filename, encryptionkey):
 
     # If logged in, check update from server
@@ -131,8 +140,13 @@ def get_db(onionAddress, loggedin, filename, encryptionkey):
                 iv_and_ct = response.content
                 iv = iv_and_ct[:16]
                 ct = iv_and_ct[16:]
-                cipher = AES.new(encryptionkey, AES.MODE_CBC, iv)
-                database = json.loads(unpad(cipher.decrypt(ct), AES.block_size))
+                try:
+                    cipher = AES.new(encryptionkey, AES.MODE_CBC, iv)
+                    database = json.loads(unpad(cipher.decrypt(ct), AES.block_size))
+                except:
+                    print("Couldn't decrypt database, please check your password")
+                    exit()
+                        
             return database
                 
     # Read database file if there was no update from server
@@ -141,8 +155,12 @@ def get_db(onionAddress, loggedin, filename, encryptionkey):
         iv_and_ct = file.read()
         iv = iv_and_ct[:16]
         ct = iv_and_ct[16:]
-        cipher = AES.new(encryptionkey, AES.MODE_CBC, iv)
-        database = json.loads(unpad(cipher.decrypt(ct), AES.block_size))
+        try:
+            cipher = AES.new(encryptionkey, AES.MODE_CBC, iv)
+            database = json.loads(unpad(cipher.decrypt(ct), AES.block_size))
+        except:
+            print("Couldn't decrypt database, please check your password")
+            exit()
 
         # If file is empty, return empty dict
         if (filedata == b''):
@@ -152,10 +170,9 @@ def get_db(onionAddress, loggedin, filename, encryptionkey):
 
     return database
 
+# Encrypts and writes the database to file
+# If logged in, also sends the file to the server
 def save_database(onionAddress, loggedin, dbfileName, encryptionkey):
-    # If logged in, send updated database file
-    # else show error message
-    # 
     global database
     with open(dbfileName, 'wb') as dbfile:
         datastream = bytes(json.dumps(database), 'utf-8')
@@ -173,7 +190,7 @@ def save_database(onionAddress, loggedin, dbfileName, encryptionkey):
 
     return
 
-# Basically just for getting the address
+# Basically just for getting the server address
 def get_config(fileName):
     try:
         with open(fileName, "r") as config:
@@ -183,23 +200,25 @@ def get_config(fileName):
         exit()
     return line
 
+# Derives the actual encryption key from the password, using the user's 'private key' as pepper
 def derivekey(password, privatekey):
     key = PBKDF2(bytes(password, 'utf-8'), privatekey, 32, count=1000000, hmac_hash_module=SHA512)
     return key
 
-# Try database update
-# Decrypt database
-# cli
 def main():
-    logged_in = False
+    logged_in = False # Indicates whether the server connection has been established
+    global database
+    
+    # Usernames are hashed, although they shouldn't be visible to anyone regardless
     usernameHasher = SHA256.new()
     usernameHasher.update(bytes(input("Username: "), "UTF-8"))
     username_hash = usernameHasher.hexdigest()
+
     password = getpass.getpass("Password: ")
+
     onionAddress = get_config(configFile)
 
-    global database
-    # Option to register new user
+    # Command line option to register new user
     if (len(sys.argv) > 1 and sys.argv[1] == '-r'):
         if register(onionAddress, username_hash, password):
             database = {}

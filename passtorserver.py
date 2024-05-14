@@ -56,6 +56,7 @@ def login_post():
         usernameHash = requestData.get('username')
         password = requestData.get('password')
         cursor = db.cursor()
+        # Using the placeholder syntax and tuples to guard against SQL injections
         result = cursor.execute("SELECT pass FROM user where username = (?)", (usernameHash,))
         
         passwordHash = result.fetchone()[0]
