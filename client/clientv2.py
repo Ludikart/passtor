@@ -34,7 +34,6 @@ def register(address, usernamehash, password):
         return False
 
     session = get_tor_session()
-    #session = requests.Session()
     userdata = {'username': usernamehash, 'password': password}
     userdata = json.dumps(userdata)
     try:
@@ -55,7 +54,6 @@ def register(address, usernamehash, password):
     with open(usernamehash, 'wb') as dbfile:
         pass
 
-    # TODO Ask for server password and authenticate with server
     return True
 
 # Logs the user onto the server
@@ -64,12 +62,10 @@ def login(address, usernamehash, password):
         with open(usernamehash + ".user", 'rb') as keyfile:
             privatekey = keyfile.read()
     except FileNotFoundError:
-        print("User's keyfile not found")
-        exit()
+        sys.exit("User's keyfile not found")
 
     encryptionkey = derivekey(password, privatekey)
 
-    #session = requests.Session()
     session = get_tor_session()
     loginData = {'username': usernamehash, 'password': password}
     loginData = json.dumps(loginData)
@@ -128,12 +124,12 @@ def removeRecord():
     return False
 
 # Sends logout reques to server and exits the client
-def logout(onionAddress):
-    #session = requests.Session()
-    session = get_tor_session()
-    global session_cookie
-    response = session.get(onionAddress + "/logout", cookies={'session': session_cookie})
-    exit()
+def logout(loggedin, onionAddress):
+    if loggedin:
+        session = get_tor_session()
+        global session_cookie
+        response = session.get(onionAddress + "/logout", cookies={'session': session_cookie})
+    sys.exit(0)
 
 # Fetches updates from the server, decrypts and returns the database in dict form
 def get_db(onionAddress, loggedin, filename, encryptionkey):
@@ -141,7 +137,6 @@ def get_db(onionAddress, loggedin, filename, encryptionkey):
     # If logged in, check update from server
     if (loggedin):
         global session_cookie
-        #session = requests.Session()
         session = get_tor_session()
         response = session.get(onionAddress, cookies={'username': filename, 'session': session_cookie})
         if response.status_code == 200:
@@ -155,8 +150,7 @@ def get_db(onionAddress, loggedin, filename, encryptionkey):
                     cipher = AES.new(encryptionkey, AES.MODE_CBC, iv)
                     database = json.loads(unpad(cipher.decrypt(ct), AES.block_size))
                 except:
-                    print("Couldn't decrypt database, please check your password")
-                    exit()
+                    sys.exit("Couldn't decrypt database, please check your password")
                         
             return database
                 
@@ -170,8 +164,7 @@ def get_db(onionAddress, loggedin, filename, encryptionkey):
             cipher = AES.new(encryptionkey, AES.MODE_CBC, iv)
             database = json.loads(unpad(cipher.decrypt(ct), AES.block_size))
         except:
-            print("Couldn't decrypt database, please check your password")
-            exit()
+            sys.exit("Couldn't decrypt database, please check your password")
 
     return database
 
@@ -202,9 +195,7 @@ def get_config(fileName):
         with open(fileName, "r") as config:
             line = config.readline()
     except Exception:
-        print("Config file couldn't be read.")
-        print(fileName)
-        exit()
+        sys.exit("Config file couldn't be read.")
     return line
 
 # Derives the actual encryption key from the password, using the user's 'private key' as pepper
@@ -231,7 +222,7 @@ def main():
             database = {}
             logged_in, encryption_key = login(onionAddress, username_hash, password)
             save_database(onionAddress, logged_in, username_hash, encryption_key)
-            exit()
+            sys.exit(0)
     
     logged_in, encryption_key = login(onionAddress, username_hash, password)
 
@@ -255,7 +246,7 @@ def main():
         elif (command == "c"):
             changeRecord()
         elif (command == "q"):
-            logout(onionAddress)
+            logout(logged_in, onionAddress)
         elif (command == "t"):
             test(onionAddress)
         elif (command == "s"):
