@@ -32,10 +32,10 @@ def get_db():
 def get_database():
     usernameHash = request.cookies.get('username')
     if 'username' in session:
-        last_modified_time = os.path.getmtime(usernameHash)
-        last_modified_datetime = datetime.datetime.utcfromtimestamp(last_modified_time)
-        response = send_file(usernameHash)
-        response.last_modified = last_modified_datetime
+        #last_modified_time = os.path.getmtime(os.getcwd() + "/" + usernameHash)
+        #last_modified_datetime = datetime.datetime.utcfromtimestamp(last_modified_time)
+        response = send_file(os.getcwd() + "/" + usernameHash)
+        #response.last_modified = last_modified_datetime
         return response
     return "Unauthorized", 401
 
@@ -43,8 +43,9 @@ def get_database():
 def update_database():
     usernameHash = request.cookies.get('username')
     if 'username' in session:
-        dbfile = request.files['db']
-        dbfile.save(usernameHash)
+        received_file = request.files['db']
+        with open(os.getcwd() + "/" + usernameHash, "wb") as dbfile:
+            received_file.save(dbfile)
         return "Ok", 200
     return "Unauthorized", 401
 
@@ -60,11 +61,14 @@ def login_post():
         # Using the placeholder syntax and tuples to guard against SQL injections
         result = cursor.execute("SELECT pass FROM user where username = (?)", (usernameHash,))
         
-        passwordHash = result.fetchone()[0]
+        try:
+            passwordHash = result.fetchone()[0]
+        except TypeError: # The user was not found
+            return "Not found", 404
 
         if passwordHasher.verify(passwordHash, password):
             session['username'] = usernameHash
-            return "Ok", 200 
+            return "Ok", 200 # Authentication successful
         else:
             return "Unauthorized", 401
     return "Bad request", 400
