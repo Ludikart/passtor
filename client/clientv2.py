@@ -17,6 +17,13 @@ username_hash = ""
 global database
 database = {}
 
+def get_tor_session():
+    session = requests.session()
+    # Tor uses the 9050 port as the default socks port
+    session.proxies = {'http':  'socks5h://127.0.0.1:9050',
+                       'https': 'socks5h://127.0.0.1:9050'}
+    return session
+
 # Creates a key file and database file
 # Register new user on the server
 # 
@@ -26,7 +33,8 @@ def register(address, usernamehash, password):
         print("User already exists")
         return False
 
-    session = requests.Session()
+    session = get_tor_session()
+    #session = requests.Session()
     userdata = {'username': usernamehash, 'password': password}
     userdata = json.dumps(userdata)
     try:
@@ -61,7 +69,8 @@ def login(address, usernamehash, password):
 
     encryptionkey = derivekey(password, privatekey)
 
-    session = requests.Session()
+    #session = requests.Session()
+    session = get_tor_session()
     loginData = {'username': usernamehash, 'password': password}
     loginData = json.dumps(loginData)
     try:
@@ -120,7 +129,8 @@ def removeRecord():
 
 # Sends logout reques to server and exits the client
 def logout(onionAddress):
-    session = requests.Session()
+    #session = requests.Session()
+    session = get_tor_session()
     global session_cookie
     response = session.get(onionAddress + "/logout", cookies={'session': session_cookie})
     exit()
@@ -131,7 +141,8 @@ def get_db(onionAddress, loggedin, filename, encryptionkey):
     # If logged in, check update from server
     if (loggedin):
         global session_cookie
-        session = requests.Session()
+        #session = requests.Session()
+        session = get_tor_session()
         response = session.get(onionAddress, cookies={'username': filename, 'session': session_cookie})
         if response.status_code == 200:
             with open(filename, "wb") as dbfile:
@@ -162,12 +173,6 @@ def get_db(onionAddress, loggedin, filename, encryptionkey):
             print("Couldn't decrypt database, please check your password")
             exit()
 
-        # If file is empty, return empty dict
-        if (filedata == b''):
-            database = {}
-        else:
-            database = json.loads(filedata)
-
     return database
 
 # Encrypts and writes the database to file
@@ -184,7 +189,8 @@ def save_database(onionAddress, loggedin, dbfileName, encryptionkey):
     
     if (loggedin):
         with open(dbfileName, 'rb') as file:
-            response = requests.post(onionAddress, files={'db': file}, cookies={'username': dbfileName, 'session': session_cookie})
+            session = get_tor_session()
+            response = session.post(onionAddress, files={'db': file}, cookies={'username': dbfileName, 'session': session_cookie})
     else:
         print("Database couldn't be sent to server, please try to log in again.")
 
@@ -197,6 +203,7 @@ def get_config(fileName):
             line = config.readline()
     except Exception:
         print("Config file couldn't be read.")
+        print(fileName)
         exit()
     return line
 
