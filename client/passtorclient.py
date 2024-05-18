@@ -42,7 +42,7 @@ def register(address, usernamehash, password):
         if resp.status_code == 409: # User already exists
             return False
     except:
-        print("Couldn't connect to server")
+        sys.exit("Couldn't connect to server")
     
 
 
@@ -155,6 +155,7 @@ def get_db(onionAddress, loggedin, filename, encryptionkey):
         response = session.get(onionAddress, cookies={'username': filename, 'session': session_cookie})
         if response.status_code == 200:
             with open(filename, "wb") as dbfile:
+                print("Writing to file")
                 dbfile.write(response.content)
                 # Decryption
                 iv_and_ct = response.content
