@@ -36,6 +36,7 @@ def register(address, usernamehash, password):
     session = get_tor_session()
     userdata = {'username': usernamehash, 'password': password}
     userdata = json.dumps(userdata)
+    print("Registering...")
     try:
         resp = session.post(address + "/register", data=userdata, headers={'Content-Type': 'application/json'})
         if resp.status_code == 409: # User already exists
@@ -54,10 +55,12 @@ def register(address, usernamehash, password):
     with open(usernamehash, 'wb') as dbfile:
         pass
 
+    print("Registration successful")
     return True
 
 # Logs the user onto the server
 def login(address, usernamehash, password):
+    print("Logging in...")
     try:
         with open(usernamehash + ".user", 'rb') as keyfile:
             privatekey = keyfile.read()
@@ -123,11 +126,21 @@ def removeRecord():
             return True
     return False
 
+def commands():
+    print("Commands:\n\
+         n = New record\n \
+        l = List records\n \
+        g = Get record\n \
+        d = Delete record\n \
+        s = Save database\n \
+        q = Log out and quit")
+
 # Sends logout reques to server and exits the client
 def logout(loggedin, onionAddress):
     if loggedin:
         session = get_tor_session()
         global session_cookie
+        print("Logging out...")
         response = session.get(onionAddress + "/logout", cookies={'session': session_cookie})
     sys.exit(0)
 
@@ -138,6 +151,7 @@ def get_db(onionAddress, loggedin, filename, encryptionkey):
     if (loggedin):
         global session_cookie
         session = get_tor_session()
+        print("Fetching database update...")
         response = session.get(onionAddress, cookies={'username': filename, 'session': session_cookie})
         if response.status_code == 200:
             with open(filename, "wb") as dbfile:
@@ -152,6 +166,7 @@ def get_db(onionAddress, loggedin, filename, encryptionkey):
                 except:
                     sys.exit("Couldn't decrypt database, please check your password")
                         
+            print("Database update successful")
             return database
                 
     # Read database file if there was no update from server
@@ -179,11 +194,17 @@ def save_database(onionAddress, loggedin, dbfileName, encryptionkey):
         ct = cipher.encrypt(pad(datastream, AES.block_size))
         iv = cipher.iv
         dbfile.write(iv + ct)
+        print("Database saved to file")
     
     if (loggedin):
         with open(dbfileName, 'rb') as file:
+            print("Sending...")
             session = get_tor_session()
             response = session.post(onionAddress, files={'db': file}, cookies={'username': dbfileName, 'session': session_cookie})
+            if response.status_code == 200:
+                print("Database sent to server")
+            else:
+                print("Database saving failed")
     else:
         print("Database couldn't be sent to server, please try to log in again.")
 
@@ -223,6 +244,8 @@ def main():
             logged_in, encryption_key = login(onionAddress, username_hash, password)
             save_database(onionAddress, logged_in, username_hash, encryption_key)
             sys.exit(0)
+        else:
+            print("Registration failed")
     
     logged_in, encryption_key = login(onionAddress, username_hash, password)
 
@@ -243,12 +266,8 @@ def main():
         elif (command == "d"):
             if removeRecord():
                 save_database(onionAddress, logged_in, username_hash, encryption_key)
-        elif (command == "c"):
-            changeRecord()
         elif (command == "q"):
             logout(logged_in, onionAddress)
-        elif (command == "t"):
-            test(onionAddress)
         elif (command == "s"):
             save_database(onionAddress, logged_in, username_hash, encryption_key)
 
