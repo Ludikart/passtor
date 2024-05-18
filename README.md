@@ -1,7 +1,7 @@
 # Passtor
 
-This program stores passwords and usernames in a database on a server and the user can then access them connected through the tor-network. The user logs in and can retrieve one password at a time from the server's database.
+A Simple password manager. Project Exercise work for COMP.SEC.300 Secure Programming. Mostly done as a demonstration of synchronizing the database to a tor hidden service server.
 
-This is probably not the best way to store and get passwords from a server. It would probably be better to just have a single database file, which you store locally and update to and from the server periodically. This project is mostly for demonstration purposes.
+The program has some limitations and I don't recommend actually using it for storing your passwords.
 
-The application users must be added locally using the databasefunctions cli. The user can then log in through the internet.
+The server can be hosted anywhere, as hidden services don't need a static IP address.
