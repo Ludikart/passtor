@@ -5,3 +5,7 @@ A Simple password manager. Project Exercise work for COMP.SEC.300 Secure Program
 The program has some limitations and I don't recommend actually using it for storing your passwords.
 
 The server can be hosted anywhere, as hidden services don't need a static IP address.
+
+To use the client, a tor socks5 proxy must be running on 127.0.0.1:9050 (the default address)
+
+The server's user database is currently initialized using the databasefunctions script and schema.sql file in the same directory the server is run in.
