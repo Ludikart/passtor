@@ -170,16 +170,19 @@ def get_db(onionAddress, loggedin, filename, encryptionkey):
             return database
                 
     # Read database file if there was no update from server
-    with open(filename, "rb") as file:
-        # Decryption
-        iv_and_ct = file.read()
-        iv = iv_and_ct[:16]
-        ct = iv_and_ct[16:]
-        try:
-            cipher = AES.new(encryptionkey, AES.MODE_CBC, iv)
-            database = json.loads(unpad(cipher.decrypt(ct), AES.block_size))
-        except:
-            sys.exit("Couldn't decrypt database, please check your password")
+    try:
+        with open(filename, "rb") as file:
+            # Decryption
+            iv_and_ct = file.read()
+            iv = iv_and_ct[:16]
+            ct = iv_and_ct[16:]
+            try:
+                cipher = AES.new(encryptionkey, AES.MODE_CBC, iv)
+                database = json.loads(unpad(cipher.decrypt(ct), AES.block_size))
+            except:
+                sys.exit("Couldn't decrypt database, please check your password")
+    except FileNotFoundError:
+        sys.exit("Database file not found")
 
     return database
 
